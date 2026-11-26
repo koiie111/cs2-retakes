@@ -35,21 +35,21 @@ public class ForceBombsiteCommand
 
         if (commandInfo.ArgCount < 2)
         {
-            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} Usage: !forcebombsite [A/B]");
+            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.bombsite.force.usage"]}");
             return;
         }
 
         var bombsite = commandInfo.GetArg(1).ToUpper();
         if (bombsite != "A" && bombsite != "B")
         {
-            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} You must specify a bombsite [A / B].");
+            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.bombsite.invalid"]}");
             return;
         }
 
         var forcedBombsite = bombsite == "A" ? Bombsite.A : Bombsite.B;
         _roundEventHandlers.SetForcedBombsite(forcedBombsite);
 
-        commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} The bombsite will now be forced to {forcedBombsite}.");
+        commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.bombsite.forced", forcedBombsite]}");
         Logger.LogInfo("Commands", $"Bombsite forced to {forcedBombsite} by {player?.PlayerName ?? "Console"}");
     }
 }

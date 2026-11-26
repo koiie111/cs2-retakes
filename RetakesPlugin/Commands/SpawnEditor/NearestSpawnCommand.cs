@@ -38,7 +38,7 @@ public class NearestSpawnCommand
 
         if (_showSpawnsCommand.ShowingSpawnsForBombsite == null)
         {
-            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} You must be in spawn editing mode.");
+            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.spawn.editor_required"]}");
             return;
         }
 
@@ -49,7 +49,7 @@ public class NearestSpawnCommand
 
         if (_plugin.SpawnManager == null)
         {
-            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} Services not initialized.");
+            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.not_ready"]}");
             return;
         }
 
@@ -57,7 +57,7 @@ public class NearestSpawnCommand
 
         if (spawns.Count == 0)
         {
-            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} No spawns found.");
+            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.spawn.none"]}");
             return;
         }
 
@@ -79,11 +79,11 @@ public class NearestSpawnCommand
 
         if (closestSpawn == null)
         {
-            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} No spawns found.");
+            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.spawn.none"]}");
             return;
         }
 
         player!.PlayerPawn.Value!.Teleport(closestSpawn.Vector, closestSpawn.QAngle, new Vector());
-        commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} Teleported to nearest spawn");
+        commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.spawn.teleported"]}");
     }
 }

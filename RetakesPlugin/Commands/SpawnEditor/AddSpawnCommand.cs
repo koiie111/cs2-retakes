@@ -39,39 +39,39 @@ public class AddSpawnCommand
 
         if (_showSpawnsCommand.ShowingSpawnsForBombsite == null)
         {
-            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} You can't add a spawn if you're not showing the spawns.");
+            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.spawn.add.show_first"]}");
             return;
         }
 
         if (!PlayerHelper.HasAlivePawn(player))
         {
-            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} You must have an alive player pawn.");
+            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.spawn.alive_required"]}");
             return;
         }
 
         if (commandInfo.ArgCount < 2)
         {
-            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} Usage: !add [T/CT] [Y/N can be planter] [plant location name]");
+            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.spawn.add.usage"]}");
             return;
         }
 
         var team = commandInfo.GetArg(1).ToUpper();
         if (team != "T" && team != "CT")
         {
-            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} You must specify a team [T / CT].");
+            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.spawn.team_required"]}");
             return;
         }
 
         var canBePlanterInput = commandInfo.GetArg(2).ToUpper();
         if (!string.IsNullOrWhiteSpace(canBePlanterInput) && canBePlanterInput != "Y" && canBePlanterInput != "N")
         {
-            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} Incorrect value for can be planter [Y / N].");
+            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.spawn.planter_invalid"]}");
             return;
         }
 
         if (_plugin.SpawnManager == null || _plugin.MapConfigService == null)
         {
-            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} Services not initialized.");
+            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.not_ready"]}");
             return;
         }
 
@@ -92,7 +92,7 @@ public class AddSpawnCommand
 
         if (closestDistance <= 72)
         {
-            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} You are too close to another spawn.");
+            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.spawn.too_close"]}");
             return;
         }
 
@@ -118,7 +118,7 @@ public class AddSpawnCommand
         )
         {
             Team = team == "T" ? CsTeam.Terrorist : CsTeam.CounterTerrorist,
-            CanBePlanter = team == "T" && !string.IsNullOrWhiteSpace(canBePlanterInput) ? canBePlanterInput == "Y" : player.PlayerPawn.Value.InBombZoneTrigger,
+            CanBePlanter = team == "T" && (string.IsNullOrWhiteSpace(canBePlanterInput) ? player.PlayerPawn.Value.InBombZoneTrigger : canBePlanterInput == "Y"),
             Bombsite = (Bombsite)_showSpawnsCommand.ShowingSpawnsForBombsite
         };
 
@@ -128,18 +128,17 @@ public class AddSpawnCommand
         }
         else if (plantLocation != null)
         {
-            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} Plant location name ignored because this spawn can't be a planter spawn.");
+            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.spawn.plant_location_ignored"]}");
         }
-
-        SpawnService.ShowSpawn(newSpawn);
 
         var didAddSpawn = _plugin.MapConfigService.AddSpawn(newSpawn);
         if (didAddSpawn)
         {
+            SpawnService.ShowSpawn(_plugin, newSpawn);
             _plugin.SpawnManager.CalculateMapSpawns();
         }
 
-        commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {(didAddSpawn ? "Spawn added" : "Error adding spawn")}");
+        commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer[didAddSpawn ? "retakes.spawn.added" : "retakes.spawn.add_failed"]}");
 
         if (didAddSpawn)
         {

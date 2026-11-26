@@ -26,16 +26,16 @@ public static class SpawnService
 
         foreach (var spawn in spawns)
         {
-            ShowSpawn(spawn);
+            ShowSpawn(plugin, spawn);
         }
 
-        Server.PrintToChatAll($"{plugin.Localizer["retakes.prefix"]} Showing {spawns.Count} spawns for bombsite {bombsite}.");
+        Server.PrintToChatAll($"{plugin.Localizer["retakes.prefix"]} {plugin.Localizer["retakes.spawn.showing", spawns.Count, bombsite]}");
         Logger.LogInfo("SpawnService", $"Showing {spawns.Count} spawns for bombsite {bombsite}");
 
         return spawns.Count;
     }
 
-    public static void ShowSpawn(Spawn spawn)
+    public static void ShowSpawn(RetakesPlugin plugin, Spawn spawn)
     {
         // Create player model
         var model = Utilities.CreateEntityByName<CDynamicProp>("prop_dynamic");
@@ -80,7 +80,7 @@ public static class SpawnService
             model.Teleport(spawn.Vector, spawn.QAngle, new Vector(0, 0, 0));
             if (model.Index != 0) _spawnModelIndexes.Add(model.Index);
 
-            CreateSpawnLabel(spawn);
+            CreateSpawnLabel(plugin, spawn);
 
             Logger.LogDebug("SpawnService", $"Created spawn model for {spawn.Team} at {spawn.Vector}");
         }
@@ -91,7 +91,7 @@ public static class SpawnService
         }
     }
 
-    private static void CreateSpawnLabel(Spawn spawn)
+    private static void CreateSpawnLabel(RetakesPlugin plugin, Spawn spawn)
     {
         try
         {
@@ -99,10 +99,10 @@ public static class SpawnService
             if (spawnText == null) return;
 
             var teamName = spawn.Team == CsTeam.Terrorist ? "T" : "CT";
-            var planterText = spawn.CanBePlanter ? " [PLANTER]" : "";
+            var planterText = spawn.CanBePlanter ? plugin.Localizer["retakes.spawn.planter"].Value : "";
             var bombsiteText = spawn.Bombsite == Bombsite.A ? "A" : "B";
 
-            spawnText.MessageText = $"{teamName}{planterText}\nBombsite {bombsiteText}\n{spawn.Vector.X:F1} {spawn.Vector.Y:F1} {spawn.Vector.Z:F1}";
+            spawnText.MessageText = $"{teamName}{planterText}\n{plugin.Localizer["retakes.spawn.bombsite", bombsiteText]}\n{spawn.Vector.X:F1} {spawn.Vector.Y:F1} {spawn.Vector.Z:F1}";
             spawnText.Enabled = true;
             spawnText.FontSize = 25f;
 
