@@ -109,7 +109,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             _ => null
         };
         return section is not null && AdminManager.PlayerHasPermissions(player,
-            PlayerHelper.GetCommandPermission(Config, command, section));
+            PlayerHelper.GetCommandPermission(Config, command, section, command == "css_scramble" ? "@css/admin" : "@css/root"));
     }
 
     #region State
@@ -142,6 +142,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
 
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
         AddCommandListener("jointeam", OnCommandJoinTeam);
+        RegisterCommands();
 
         RetakesEnabledConVar.ValueChanged += OnRetakesEnabledChanged;
 
@@ -225,7 +226,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         }
     }
 
-    private void InitializeServices(string mapName, string? customMapConfig = null)
+    private void InitializeServices(string mapName)
     {
         try
         {
@@ -233,7 +234,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             _gameManager?.CancelWaitingForPlayers();
 
             // Initialize MapConfigService
-            _mapConfigService = new MapConfigService(ModuleDirectory, customMapConfig ?? mapName, _jsonOptions);
+            _mapConfigService = new MapConfigService(ModuleDirectory, mapName, _jsonOptions);
             _mapConfigService.Load();
 
             // Initialize Managers
@@ -296,7 +297,13 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
 
             _mapConfigCommand = new MapConfigCommand(this, ModuleDirectory, (configName) =>
             {
-                InitializeServices(Server.MapName, configName);
+                if (!_mapConfigService.TryLoad(configName))
+                    return false;
+
+                _spawnManager.CalculateMapSpawns();
+                if (_showSpawnsCommand?.ShowingSpawnsForBombsite is { } site)
+                    SpawnService.ShowSpawns(this, _mapConfigService.GetSpawnsClone(), site);
+                return true;
             });
             _mapConfigsCommand = new MapConfigsCommand(this, ModuleDirectory);
 
@@ -311,9 +318,6 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             // Set command references in event handlers
             _roundEventHandlers?.SetCommandReferences(_showSpawnsCommand);
 
-            // Register all commands
-            RegisterCommands();
-
             Utils.Logger.LogInfo("Services", "All services initialized successfully");
         }
         catch (Exception ex)
@@ -324,47 +328,41 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
 
     private void RegisterCommands()
     {
-        if (_forceBombsiteCommand == null || _forceBombsiteStopCommand == null || _scrambleCommand == null || _debugQueuesCommand == null || _mapConfigCommand == null || _mapConfigsCommand == null || _voicesCommand == null || _showSpawnsCommand == null || _addSpawnCommand == null || _removeSpawnCommand == null || _nearestSpawnCommand == null || _hideSpawnsCommand == null)
-        {
-            Utils.Logger.LogWarning("Commands", "Cannot register commands - command handlers not initialized");
-            return;
-        }
-
         // Admin Commands
-        AddCommand("css_forcebombsite", "Выбрать одну точку для следующих раундов.", _forceBombsiteCommand.OnCommand);
-        AddCommand("css_forcebombsitestop", "Вернуть автоматический выбор точки.", _forceBombsiteStopCommand.OnCommand);
-        AddCommand("css_scramble", "Перемешать команды перед следующим раундом.", _scrambleCommand.OnCommand);
-        AddCommand("css_scrambleteams", "Перемешать команды перед следующим раундом.", _scrambleCommand.OnCommand);
-        AddCommand("css_debugqueues", "Вывести состояние очереди в консоль сервера.", _debugQueuesCommand.OnCommand);
+        AddCommand("css_forcebombsite", "Выбрать одну точку для следующих раундов.", (player, info) => _forceBombsiteCommand?.OnCommand(player, info));
+        AddCommand("css_forcebombsitestop", "Вернуть автоматический выбор точки.", (player, info) => _forceBombsiteStopCommand?.OnCommand(player, info));
+        AddCommand("css_scramble", "Перемешать команды перед следующим раундом.", (player, info) => _scrambleCommand?.OnCommand(player, info));
+        AddCommand("css_scrambleteams", "Перемешать команды перед следующим раундом.", (player, info) => _scrambleCommand?.OnCommand(player, info));
+        AddCommand("css_debugqueues", "Вывести состояние очереди в консоль сервера.", (player, info) => _debugQueuesCommand?.OnCommand(player, info));
 
         // Map Config Commands
-        AddCommand("css_mapconfig", "Загрузить конфигурацию карты из файла.", _mapConfigCommand.OnCommand);
-        AddCommand("css_setmapconfig", "Загрузить конфигурацию карты из файла.", _mapConfigCommand.OnCommand);
-        AddCommand("css_loadmapconfig", "Загрузить конфигурацию карты из файла.", _mapConfigCommand.OnCommand);
-        AddCommand("css_mapconfigs", "Показать доступные конфигурации карт.", _mapConfigsCommand.OnCommand);
-        AddCommand("css_viewmapconfigs", "Показать доступные конфигурации карт.", _mapConfigsCommand.OnCommand);
-        AddCommand("css_listmapconfigs", "Показать доступные конфигурации карт.", _mapConfigsCommand.OnCommand);
+        AddCommand("css_mapconfig", "Загрузить конфигурацию карты из файла.", (player, info) => _mapConfigCommand?.OnCommand(player, info));
+        AddCommand("css_setmapconfig", "Загрузить конфигурацию карты из файла.", (player, info) => _mapConfigCommand?.OnCommand(player, info));
+        AddCommand("css_loadmapconfig", "Загрузить конфигурацию карты из файла.", (player, info) => _mapConfigCommand?.OnCommand(player, info));
+        AddCommand("css_mapconfigs", "Показать доступные конфигурации карт.", (player, info) => _mapConfigsCommand?.OnCommand(player, info));
+        AddCommand("css_viewmapconfigs", "Показать доступные конфигурации карт.", (player, info) => _mapConfigsCommand?.OnCommand(player, info));
+        AddCommand("css_listmapconfigs", "Показать доступные конфигурации карт.", (player, info) => _mapConfigsCommand?.OnCommand(player, info));
 
         // Spawn Editor Commands
-        AddCommand("css_showspawns", "Показать спавны на выбранной точке.", _showSpawnsCommand.OnCommand);
-        AddCommand("css_spawns", "Показать спавны на выбранной точке.", _showSpawnsCommand.OnCommand);
-        AddCommand("css_edit", "Показать спавны на выбранной точке.", _showSpawnsCommand.OnCommand);
-        AddCommand("css_add", "Добавить спавн на выбранной точке.", _addSpawnCommand.OnCommand);
-        AddCommand("css_addspawn", "Добавить спавн на выбранной точке.", _addSpawnCommand.OnCommand);
-        AddCommand("css_new", "Добавить спавн на выбранной точке.", _addSpawnCommand.OnCommand);
-        AddCommand("css_newspawn", "Добавить спавн на выбранной точке.", _addSpawnCommand.OnCommand);
-        AddCommand("css_remove", "Удалить ближайшую точку спавна.", _removeSpawnCommand.OnCommand);
-        AddCommand("css_removespawn", "Удалить ближайшую точку спавна.", _removeSpawnCommand.OnCommand);
-        AddCommand("css_delete", "Удалить ближайшую точку спавна.", _removeSpawnCommand.OnCommand);
-        AddCommand("css_deletespawn", "Удалить ближайшую точку спавна.", _removeSpawnCommand.OnCommand);
-        AddCommand("css_nearestspawn", "Переместиться к ближайшей точке спавна.", _nearestSpawnCommand.OnCommand);
-        AddCommand("css_nearest", "Переместиться к ближайшей точке спавна.", _nearestSpawnCommand.OnCommand);
-        AddCommand("css_hidespawns", "Выйти из редактора спавнов.", _hideSpawnsCommand.OnCommand);
-        AddCommand("css_done", "Выйти из редактора спавнов.", _hideSpawnsCommand.OnCommand);
-        AddCommand("css_exitedit", "Выйти из редактора спавнов.", _hideSpawnsCommand.OnCommand);
+        AddCommand("css_showspawns", "Показать спавны на выбранной точке.", (player, info) => _showSpawnsCommand?.OnCommand(player, info));
+        AddCommand("css_spawns", "Показать спавны на выбранной точке.", (player, info) => _showSpawnsCommand?.OnCommand(player, info));
+        AddCommand("css_edit", "Показать спавны на выбранной точке.", (player, info) => _showSpawnsCommand?.OnCommand(player, info));
+        AddCommand("css_add", "Добавить спавн на выбранной точке.", (player, info) => _addSpawnCommand?.OnCommand(player, info));
+        AddCommand("css_addspawn", "Добавить спавн на выбранной точке.", (player, info) => _addSpawnCommand?.OnCommand(player, info));
+        AddCommand("css_new", "Добавить спавн на выбранной точке.", (player, info) => _addSpawnCommand?.OnCommand(player, info));
+        AddCommand("css_newspawn", "Добавить спавн на выбранной точке.", (player, info) => _addSpawnCommand?.OnCommand(player, info));
+        AddCommand("css_remove", "Удалить ближайшую точку спавна.", (player, info) => _removeSpawnCommand?.OnCommand(player, info));
+        AddCommand("css_removespawn", "Удалить ближайшую точку спавна.", (player, info) => _removeSpawnCommand?.OnCommand(player, info));
+        AddCommand("css_delete", "Удалить ближайшую точку спавна.", (player, info) => _removeSpawnCommand?.OnCommand(player, info));
+        AddCommand("css_deletespawn", "Удалить ближайшую точку спавна.", (player, info) => _removeSpawnCommand?.OnCommand(player, info));
+        AddCommand("css_nearestspawn", "Переместиться к ближайшей точке спавна.", (player, info) => _nearestSpawnCommand?.OnCommand(player, info));
+        AddCommand("css_nearest", "Переместиться к ближайшей точке спавна.", (player, info) => _nearestSpawnCommand?.OnCommand(player, info));
+        AddCommand("css_hidespawns", "Выйти из редактора спавнов.", (player, info) => _hideSpawnsCommand?.OnCommand(player, info));
+        AddCommand("css_done", "Выйти из редактора спавнов.", (player, info) => _hideSpawnsCommand?.OnCommand(player, info));
+        AddCommand("css_exitedit", "Выйти из редактора спавнов.", (player, info) => _hideSpawnsCommand?.OnCommand(player, info));
 
         // Player Commands
-        AddCommand("css_voices", "Включить или отключить голосовые объявления.", _voicesCommand.OnCommand);
+        AddCommand("css_voices", "Включить или отключить голосовые объявления.", (player, info) => _voicesCommand?.OnCommand(player, info));
 
         Utils.Logger.LogInfo("Commands", "All commands registered successfully");
     }

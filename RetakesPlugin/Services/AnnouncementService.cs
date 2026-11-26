@@ -70,7 +70,18 @@ public class AnnouncementService
         var announcementMessage = _plugin.Localizer["retakes.bombsite.announcement", bombsite.ToString(), numTerrorist, numCounterTerrorist];
         var centerAnnouncementMessage = _plugin.Localizer["retakes.center.bombsite.announcement", bombsite.ToString(), numTerrorist, numCounterTerrorist];
 
-        var hasRoundToast = onlyCenter ? HudHasRoundToast.Get() : null;
+        Func<CCSPlayerController, bool>? hasRoundToast = null;
+        if (onlyCenter && _centerEnabled)
+        {
+            try
+            {
+                hasRoundToast = HudHasRoundToast.Get();
+            }
+            catch (KeyNotFoundException)
+            {
+                // CounterStrikeSharp throws when the optional allocator has no provider.
+            }
+        }
         foreach (var player in Utilities.GetPlayers())
         {
             if (!onlyCenter)

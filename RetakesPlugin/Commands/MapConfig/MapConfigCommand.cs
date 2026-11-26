@@ -10,9 +10,9 @@ public class MapConfigCommand
 {
     private readonly RetakesPlugin _plugin;
     private readonly string _moduleDirectory;
-    private readonly Action<string> _onMapConfigLoad;
+    private readonly Func<string, bool> _onMapConfigLoad;
 
-    public MapConfigCommand(RetakesPlugin plugin, string moduleDirectory, Action<string> onMapConfigLoad)
+    public MapConfigCommand(RetakesPlugin plugin, string moduleDirectory, Func<string, bool> onMapConfigLoad)
     {
         _plugin = plugin;
         _moduleDirectory = moduleDirectory;
@@ -48,7 +48,18 @@ public class MapConfigCommand
             return;
         }
 
-        var mapConfigFileName = commandInfo.GetArg(1).Trim().Replace(".json", "");
+        var mapConfigFileName = commandInfo.GetArg(1).Trim();
+        if (mapConfigFileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+        {
+            mapConfigFileName = mapConfigFileName[..^5];
+        }
+
+        if (string.IsNullOrWhiteSpace(mapConfigFileName) || mapConfigFileName.IndexOfAny(['/', '\\', ':']) >= 0 ||
+            mapConfigFileName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+        {
+            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.map_config.file_not_found"]}");
+            return;
+        }
         var mapConfigFilePath = Path.Combine(mapConfigDirectory, $"{mapConfigFileName}.json");
 
         if (!File.Exists(mapConfigFilePath))
@@ -57,7 +68,11 @@ public class MapConfigCommand
             return;
         }
 
-        _onMapConfigLoad(mapConfigFileName);
+        if (!_onMapConfigLoad(mapConfigFileName))
+        {
+            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.map_config.invalid"]}");
+            return;
+        }
 
         commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.map_config.loaded"]}");
         Logger.LogInfo("Commands", $"Map config '{mapConfigFileName}' loaded by {player?.PlayerName ?? "Console"}");

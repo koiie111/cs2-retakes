@@ -40,7 +40,7 @@ public class MapConfigsCommand
             return;
         }
 
-        var files = Directory.GetFiles(mapConfigDirectory);
+        var files = Directory.GetFiles(mapConfigDirectory, "*.json");
         Array.Sort(files);
 
         if (files.Length == 0)
@@ -51,9 +51,7 @@ public class MapConfigsCommand
 
         foreach (var file in files)
         {
-            var transformedFile = file
-                .Replace($"{mapConfigDirectory}/", "")
-                .Replace(".json", "");
+            var transformedFile = Path.GetFileNameWithoutExtension(file);
 
             commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} !mapconfig {transformedFile}");
             player?.PrintToConsole($"{_plugin.Localizer["retakes.prefix"]} !mapconfig {transformedFile}");

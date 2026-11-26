@@ -286,8 +286,6 @@ public class QueueManager
                 .Select(x => x.Player)
                 .ToList();
 
-            QueuePlayers.RemoveWhere(playersToAddList.Contains);
-
             foreach (var player in playersToAddList)
             {
                 if (!PlayerHelper.TryChangeTeam(player, CsTeam.CounterTerrorist))
@@ -296,6 +294,7 @@ public class QueueManager
                     continue;
                 }
 
+                QueuePlayers.Remove(player);
                 ActivePlayers.Add(player);
                 Logger.LogInfo("QueueManager", $"Moved {player.PlayerName} from queue to active");
             }

@@ -44,6 +44,7 @@
   "retakes.map_config.list_end": "Список доступных конфигураций выведен выше.",
   "retakes.map_config.usage": "Команда: !mapconfig [имя файла]",
   "retakes.map_config.file_not_found": "Файл конфигурации карты не найден.",
+  "retakes.map_config.invalid": "Не удалось загрузить конфигурацию карты.",
   "retakes.map_config.loaded": "Конфигурация карты загружена.",
   "retakes.command.server_only": "Эта команда доступна только из консоли сервера.",
   "retakes.spawn.added": "Точка спавна добавлена.",

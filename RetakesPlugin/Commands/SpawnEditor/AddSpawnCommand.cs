@@ -118,7 +118,7 @@ public class AddSpawnCommand
         )
         {
             Team = team == "T" ? CsTeam.Terrorist : CsTeam.CounterTerrorist,
-            CanBePlanter = team == "T" && !string.IsNullOrWhiteSpace(canBePlanterInput) ? canBePlanterInput == "Y" : player.PlayerPawn.Value.InBombZoneTrigger,
+            CanBePlanter = team == "T" && (string.IsNullOrWhiteSpace(canBePlanterInput) ? player.PlayerPawn.Value.InBombZoneTrigger : canBePlanterInput == "Y"),
             Bombsite = (Bombsite)_showSpawnsCommand.ShowingSpawnsForBombsite
         };
 
@@ -131,11 +131,10 @@ public class AddSpawnCommand
             commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.spawn.plant_location_ignored"]}");
         }
 
-        SpawnService.ShowSpawn(_plugin, newSpawn);
-
         var didAddSpawn = _plugin.MapConfigService.AddSpawn(newSpawn);
         if (didAddSpawn)
         {
+            SpawnService.ShowSpawn(_plugin, newSpawn);
             _plugin.SpawnManager.CalculateMapSpawns();
         }
 
