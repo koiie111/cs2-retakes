@@ -2,15 +2,21 @@ name: Build RetakesPlugin
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "master", "retake-17-baseline" ]
     paths:
       - '**.cs'
       - '**.csproj'
+      - 'RetakesPlugin/lang/**'
+      - 'RetakesPlugin/map_config/**'
+      - '.github/workflows/plugin-build.yml'
   pull_request:
-    branches: [ "master" ]
+    branches: [ "master", "retake-17-baseline" ]
     paths:
       - '**.cs'
       - '**.csproj'
+      - 'RetakesPlugin/lang/**'
+      - 'RetakesPlugin/map_config/**'
+      - '.github/workflows/plugin-build.yml'
   release:
     types:
       - created

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using CounterStrikeSharp.API.Modules.Utils;
 
 using RetakesPlugin.Models;
 using RetakesPlugin.Utils;
@@ -7,9 +8,9 @@ namespace RetakesPlugin.Services;
 
 public class MapConfigService
 {
-    private readonly string _mapName;
+    private string _mapName;
     private readonly string _mapConfigDirectory;
-    private readonly string _mapConfigPath;
+    private string MapConfigPath => Path.Combine(_mapConfigDirectory, $"{_mapName}.json");
     private MapConfigData? _mapConfigData;
     private readonly JsonSerializerOptions _jsonOptions;
 
@@ -17,42 +18,41 @@ public class MapConfigService
     {
         _mapName = mapName;
         _mapConfigDirectory = Path.Combine(moduleDirectory, "map_config");
-        _mapConfigPath = Path.Combine(_mapConfigDirectory, $"{mapName}.json");
         _mapConfigData = null;
         _jsonOptions = jsonOptions;
     }
 
     public void Load(bool isViaCommand = false)
     {
-        Logger.LogDebug("MapConfig", $"Attempting to load map data from {_mapConfigPath}");
+        if (!isViaCommand && !File.Exists(MapConfigPath))
+        {
+            _mapConfigData = new MapConfigData();
+            Save();
+            return;
+        }
 
-        _mapConfigData = null;
+        TryLoad(_mapName);
+    }
 
+    public bool TryLoad(string mapName)
+    {
         try
         {
-            if (!File.Exists(_mapConfigPath))
-            {
-                throw new FileNotFoundException();
-            }
+            var path = Path.Combine(_mapConfigDirectory, $"{mapName}.json");
+            var data = JsonSerializer.Deserialize<MapConfigData>(File.ReadAllText(path), _jsonOptions);
+            if (data?.Spawns is null || data.Spawns.Any(spawn => spawn?.Vector is null || spawn.QAngle is null ||
+                !Enum.IsDefined(spawn.Bombsite) || spawn.Team is not (CsTeam.Terrorist or CsTeam.CounterTerrorist)))
+                throw new JsonException("Invalid map spawn data");
 
-            var jsonData = File.ReadAllText(_mapConfigPath);
-            _mapConfigData = JsonSerializer.Deserialize<MapConfigData>(jsonData, _jsonOptions);
-
+            _mapName = mapName;
+            _mapConfigData = data;
             Logger.LogInfo("MapConfig", $"Map config loaded for {_mapName}");
-        }
-        catch (FileNotFoundException)
-        {
-            Logger.LogWarning("MapConfig", $"No config found for map {_mapName}");
-
-            if (!isViaCommand)
-            {
-                _mapConfigData = new MapConfigData();
-                Save();
-            }
+            return true;
         }
         catch (Exception ex)
         {
             Logger.LogException("MapConfig", ex);
+            return false;
         }
     }
 
@@ -130,8 +130,8 @@ public class MapConfigService
                 Directory.CreateDirectory(_mapConfigDirectory);
             }
 
-            File.WriteAllText(_mapConfigPath, jsonString);
-            Logger.LogDebug("MapConfig", $"Data written to {_mapConfigPath}");
+            File.WriteAllText(MapConfigPath, jsonString);
+            Logger.LogDebug("MapConfig", $"Data written to {MapConfigPath}");
         }
         catch (IOException e)
         {

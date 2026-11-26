@@ -36,29 +36,27 @@ public class MapConfigsCommand
 
         if (!Directory.Exists(mapConfigDirectory))
         {
-            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} No map configs found.");
+            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.map_config.none"]}");
             return;
         }
 
-        var files = Directory.GetFiles(mapConfigDirectory);
+        var files = Directory.GetFiles(mapConfigDirectory, "*.json");
         Array.Sort(files);
 
         if (files.Length == 0)
         {
-            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} No map configs found.");
+            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.map_config.none"]}");
             return;
         }
 
         foreach (var file in files)
         {
-            var transformedFile = file
-                .Replace($"{mapConfigDirectory}/", "")
-                .Replace(".json", "");
+            var transformedFile = Path.GetFileNameWithoutExtension(file);
 
             commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} !mapconfig {transformedFile}");
             player?.PrintToConsole($"{_plugin.Localizer["retakes.prefix"]} !mapconfig {transformedFile}");
         }
 
-        commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} A list of available map configs has been outputted above.");
+        commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.map_config.list_end"]}");
     }
 }

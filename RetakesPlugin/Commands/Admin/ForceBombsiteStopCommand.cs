@@ -34,7 +34,7 @@ public class ForceBombsiteStopCommand
 
         _roundEventHandlers.SetForcedBombsite(null);
 
-        commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} The bombsite will no longer be forced.");
+        commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.bombsite.force_cleared"]}");
         Logger.LogInfo("Commands", $"Forced bombsite cleared by {player?.PlayerName ?? "Console"}");
     }
 }
