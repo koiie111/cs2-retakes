@@ -7,6 +7,8 @@ public static class Logger
     private static readonly string LogPrefix = $"Retakes {RetakesPlugin.Version}";
     private static bool _isDebugEnabled;
 
+    public static bool IsDebugEnabled => _isDebugEnabled;
+
     public static void Initialize(bool isDebugEnabled)
     {
         _isDebugEnabled = isDebugEnabled;

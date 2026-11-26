@@ -90,6 +90,8 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
 
     private static readonly PluginCapability<Func<CCSPlayerController, (int Position, int Playing, int Waiting)>> HudQueueCapability
         = new("retakes_plugin:hud_queue");
+    private static readonly PluginCapability<Func<(int Playing, int Waiting, IReadOnlyDictionary<int, int> Positions)>> HudQueueSnapshotCapability
+        = new("retakes_plugin:hud_queue_snapshot");
     private static readonly PluginCapability<Func<CCSPlayerController, string, bool>> HudCommandCapability
         = new("retakes_plugin:hud_command_allowed");
     private static readonly PluginCapability<Func<bool>> HudEnabledCapability = new("retakes_plugin:enabled");
@@ -141,6 +143,13 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         Utils.Logger.LogInfo("Main", "Plugin loading...");
 
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
+        RegisterListener<Listeners.OnMapEnd>(() =>
+        {
+            GameRulesHelper.Reset();
+            _breakerManager = null;
+        });
+        RegisterListener<Listeners.OnEntitySpawned>(entity => _breakerManager?.OnSpawn(entity));
+        RegisterListener<Listeners.OnEntityDeleted>(entity => _breakerManager?.OnDelete(entity));
         AddCommandListener("jointeam", OnCommandJoinTeam);
         RegisterCommands();
 
@@ -150,6 +159,9 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         Capabilities.RegisterPluginCapability(RetakesPluginEventSenderCapability, () => retakesPluginEventSender);
         Capabilities.RegisterPluginCapability(HudQueueCapability,
             () => player => _gameManager?.QueueManager.GetHudQueueState(player) ?? default);
+        Capabilities.RegisterPluginCapability(HudQueueSnapshotCapability,
+            () => () => _gameManager?.QueueManager.GetHudQueueSnapshot() ??
+                (0, 0, new Dictionary<int, int>()));
         Capabilities.RegisterPluginCapability(HudCommandCapability, () => CanRunHudCommand);
         Capabilities.RegisterPluginCapability(HudEnabledCapability, () => () => IsPluginEnabled);
 
@@ -182,6 +194,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     {
         Utils.Logger.LogInfo("MapStart", $"Map started: {mapName}");
 
+        GameRulesHelper.Reset();
         SpawnService.Reset();
 
         AddTimer(1.0f, () =>
@@ -529,6 +542,8 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             ServerHelper.ExecuteRetakesUnloadConfiguration();
         }
 
+        GameRulesHelper.Reset();
+        _breakerManager = null;
         base.Unload(hotReload);
     }
 }

@@ -64,8 +64,8 @@ public class AnnouncementService
 
     public void AnnounceBombsite(Bombsite bombsite, bool onlyCenter = false)
     {
-        var numTerrorist = PlayerHelper.GetPlayerCount(CounterStrikeSharp.API.Modules.Utils.CsTeam.Terrorist);
-        var numCounterTerrorist = PlayerHelper.GetPlayerCount(CounterStrikeSharp.API.Modules.Utils.CsTeam.CounterTerrorist);
+        var players = Utilities.GetPlayers();
+        var (numTerrorist, numCounterTerrorist) = PlayerHelper.CountTeams(players);
 
         var announcementMessage = _plugin.Localizer["retakes.bombsite.announcement", bombsite.ToString(), numTerrorist, numCounterTerrorist];
         var centerAnnouncementMessage = _plugin.Localizer["retakes.center.bombsite.announcement", bombsite.ToString(), numTerrorist, numCounterTerrorist];
@@ -82,11 +82,12 @@ public class AnnouncementService
                 // CounterStrikeSharp throws when the optional allocator has no provider.
             }
         }
-        foreach (var player in Utilities.GetPlayers())
+        var chat = onlyCenter ? null : $"{_plugin.Localizer["retakes.prefix"]} {announcementMessage}";
+        foreach (var player in players)
         {
             if (!onlyCenter)
             {
-                player.PrintToChat($"{_plugin.Localizer["retakes.prefix"]} {announcementMessage}");
+                player.PrintToChat(chat!);
 
                 if (_voicesEnabled && !_hasMutedVoices.Contains(player))
                 {

@@ -9,7 +9,9 @@ namespace RetakesPlugin.Managers;
 
 public class BreakerManager
 {
-    private readonly List<(string designerName, string action)> _entityActions = [];
+    private readonly Dictionary<string, string> _entityActions = new(StringComparer.Ordinal);
+    private readonly HashSet<uint> _entities = [];
+    private bool _indexed;
 
     private static readonly HashSet<string> MapsWithPropDynamic = [
         "de_vertigo",
@@ -23,22 +25,19 @@ public class BreakerManager
     {
         if (shouldBreakBreakables ?? false)
         {
-            _entityActions.AddRange(new List<(string designerName, string action)>
-            {
-                ("func_breakable", "Break"),
-                ("func_breakable_surf", "Break"),
-                ("prop.breakable.01", "Break"),
-                ("prop.breakable.02", "Break")
-            });
+            _entityActions.Add("func_breakable", "Break");
+            _entityActions.Add("func_breakable_surf", "Break");
+            _entityActions.Add("prop.breakable.01", "Break");
+            _entityActions.Add("prop.breakable.02", "Break");
 
             if (MapsWithPropDynamic.Contains(Server.MapName))
             {
-                _entityActions.Add(("prop_dynamic", "Break"));
+                _entityActions.Add("prop_dynamic", "Break");
             }
 
             if (MapsWithFuncButton.Contains(Server.MapName))
             {
-                _entityActions.Add(("func_button", "Kill"));
+                _entityActions.Add("func_button", "Kill");
             }
 
             Logger.LogInfo("BreakerManager", "Breakables enabled");
@@ -46,74 +45,48 @@ public class BreakerManager
 
         if (shouldOpenDoors ?? false)
         {
-            _entityActions.Add(("prop_door_rotating", "open"));
+            _entityActions.Add("prop_door_rotating", "open");
             Logger.LogInfo("BreakerManager", "Door opening enabled");
         }
+    }
+
+    public void OnSpawn(CEntityInstance entity)
+    {
+        if (_entityActions.Count != 0 && entity.IsValid &&
+            entity.DesignerName is { } name && _entityActions.ContainsKey(name))
+            _entities.Add(entity.EntityHandle.Raw);
+    }
+
+    public void OnDelete(CEntityInstance entity)
+    {
+        if (_entities.Count != 0)
+            _entities.Remove(entity.EntityHandle.Raw);
     }
 
     public void Handle()
     {
         if (_entityActions.Count == 0)
-        {
             return;
+
+        if (!_indexed)
+        {
+            foreach (var entity in Utilities.GetAllEntities())
+                OnSpawn(entity);
+            _indexed = true;
         }
 
-        var entitiesProcessed = 0;
-
-        var pEntity = new CEntityIdentity(EntitySystem.FirstActiveEntity);
-        for (; pEntity != null && pEntity.Handle != IntPtr.Zero; pEntity = pEntity.Next)
+        // Break and Kill may delete entities synchronously.
+        foreach (var handle in _entities.ToArray())
         {
-            foreach (var (designerName, action) in _entityActions)
+            if (EntitySystem.GetEntityByHandle(handle) is not { } pointer || pointer == IntPtr.Zero)
             {
-                if (pEntity.DesignerName != designerName)
-                {
-                    continue;
-                }
-
-                switch (pEntity.DesignerName)
-                {
-                    case "func_breakable":
-                    case "func_breakable_surf":
-                    case "prop_dynamic":
-                    case "prop.breakable.01":
-                    case "prop.breakable.02":
-                        var breakableEntity = new PointerTo<CBreakable>(pEntity.Handle).Value;
-                        if (breakableEntity.IsValid)
-                        {
-                            breakableEntity.AcceptInput(action);
-                            entitiesProcessed++;
-                        }
-
-                        break;
-
-                    case "func_button":
-                        var button = new PointerTo<CBaseButton>(pEntity.Handle).Value;
-                        if (button.IsValid)
-                        {
-                            button.AcceptInput(action);
-                            entitiesProcessed++;
-                        }
-
-                        break;
-
-                    case "prop_door_rotating":
-                        var propDoorRotating = new PointerTo<CPropDoorRotating>(pEntity.Handle).Value;
-                        if (propDoorRotating.IsValid)
-                        {
-                            propDoorRotating.AcceptInput(action);
-                            entitiesProcessed++;
-                        }
-
-                        break;
-                }
-
-                break;
+                _entities.Remove(handle);
+                continue;
             }
-        }
 
-        if (entitiesProcessed > 0)
-        {
-            Logger.LogDebug("BreakerManager", $"Processed {entitiesProcessed} entities");
+            var entity = new CBaseEntity(pointer);
+            if (entity.IsValid && entity.DesignerName is { } name && _entityActions.TryGetValue(name, out var action))
+                entity.AcceptInput(action);
         }
     }
 }
