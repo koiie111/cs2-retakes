@@ -1,5 +1,6 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Admin;
+using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 
 using RetakesPlugin.Managers;
@@ -35,7 +36,7 @@ public class PlayerEventHandlers
         {
             _plugin.AddTimer(1.0f, () =>
             {
-                if (!PlayerHelper.IsValid(player) || !PlayerHelper.IsConnected(player))
+                if (!_plugin.IsPluginEnabled || !PlayerHelper.IsValid(player) || !PlayerHelper.IsConnected(player))
                 {
                     return;
                 }
@@ -43,20 +44,20 @@ public class PlayerEventHandlers
                 _gameManager.QueueManager.AddConnectingPlayer(player);
                 _gameManager.CheckMinimumPlayers();
                 _gameManager.RestartGameIfEmpty();
-            });
+            }, TimerFlags.STOP_ON_MAPCHANGE);
         }
         else if (_plugin.Config.Queue.ShouldAutoJoinSpectators)
         {
             _plugin.AddTimer(1.0f, () =>
             {
-                if (!PlayerHelper.IsValid(player) || !PlayerHelper.IsConnected(player))
+                if (!_plugin.IsPluginEnabled || !PlayerHelper.IsValid(player) || !PlayerHelper.IsConnected(player))
                 {
                     return;
                 }
 
                 PlayerHelper.TryChangeTeam(player, CsTeam.Spectator);
                 player.ExecuteClientCommand("teammenu");
-            });
+            }, TimerFlags.STOP_ON_MAPCHANGE);
         }
 
         // Grant VIP to contributors

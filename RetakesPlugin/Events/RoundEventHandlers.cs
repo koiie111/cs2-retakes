@@ -241,6 +241,7 @@ public class RoundEventHandlers
 
     public HookResult OnRoundEnd(EventRoundEnd @event, GameEventInfo info)
     {
+        _roundGeneration++;
         _lastRoundWinner = (CsTeam)@event.Winner;
         Logger.LogInfo("Round", $"Round ended. Winner: {_lastRoundWinner}");
         return HookResult.Continue;
@@ -256,7 +257,7 @@ public class RoundEventHandlers
         var bombsite = _currentBombsite;
         _plugin.AddTimer(4.1f, () =>
         {
-            if (generation == _roundGeneration)
+            if (_plugin.IsPluginEnabled && generation == _roundGeneration)
                 _announcementService.AnnounceBombsite(bombsite, true);
         }, TimerFlags.STOP_ON_MAPCHANGE);
 

@@ -38,6 +38,8 @@ If you appreciate the project then please take the time to star the repository ð
 4. Start the server and wait for the config.json file to be generated in `addons/counterstrikesharp/configs/plugins/RetakesPlugin`.
 5. Complete the configuration file with the parameters of your choice.
 
+For the first upgrade from a build with the older HUD providers, restart the CS2 server process after installing the updated plugins. This clears the providers registered by the previous build.
+
 ## Recommendations
 I also recommend installing these plugins for an improved player experience
 - Instadefuse: https://github.com/B3none/cs2-instadefuse
