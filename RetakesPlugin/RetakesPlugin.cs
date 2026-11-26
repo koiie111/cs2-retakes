@@ -5,8 +5,10 @@ using CounterStrikeSharp.API.Core.Capabilities;
 using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Cvars;
+using CounterStrikeSharp.API.Modules.Timers;
 using RetakesPluginShared;
 using System.Text.Json;
+using System.Runtime.CompilerServices;
 
 using RetakesPlugin.Configs;
 using RetakesPlugin.Configs.JsonConverters;
@@ -90,8 +92,11 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
 
     private static readonly PluginCapability<Func<CCSPlayerController, (int Position, int Playing, int Waiting)>> HudQueueCapability
         = new("retakes_plugin:hud_queue");
+    private static readonly PluginCapability<Func<(int Playing, int Waiting, IReadOnlyDictionary<int, int> Positions)>> HudQueueSnapshotCapability
+        = new("retakes_plugin:hud_queue_snapshot");
     private static readonly PluginCapability<Func<CCSPlayerController, string, bool>> HudCommandCapability
         = new("retakes_plugin:hud_command_allowed");
+    private readonly List<Action> _clearHudProviders = [];
     private static readonly PluginCapability<Func<bool>> HudEnabledCapability = new("retakes_plugin:enabled");
 
     private bool CanRunHudCommand(CCSPlayerController player, string command)
@@ -141,18 +146,34 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         Utils.Logger.LogInfo("Main", "Plugin loading...");
 
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
+        RegisterListener<Listeners.OnMapEnd>(() =>
+        {
+            GameRulesHelper.Reset();
+            _breakerManager = null;
+        });
+        RegisterListener<Listeners.OnEntitySpawned>(entity => _breakerManager?.OnSpawn(entity));
+        RegisterListener<Listeners.OnEntityDeleted>(entity => _breakerManager?.OnDelete(entity));
         AddCommandListener("jointeam", OnCommandJoinTeam);
         RegisterCommands();
 
         RetakesEnabledConVar.ValueChanged += OnRetakesEnabledChanged;
 
-        var retakesPluginEventSender = new RetakesPluginEventSender();
-        Capabilities.RegisterPluginCapability(RetakesPluginEventSenderCapability, () => retakesPluginEventSender);
-        Capabilities.RegisterPluginCapability(HudQueueCapability,
-            () => player => _gameManager?.QueueManager.GetHudQueueState(player) ?? default);
-        Capabilities.RegisterPluginCapability(HudCommandCapability, () => CanRunHudCommand);
-        Capabilities.RegisterPluginCapability(HudEnabledCapability, () => () => IsPluginEnabled);
+        // Consumers stay subscribed when the core reloads. CSS# keeps the first provider for each name.
+        IRetakesPluginEventSender? sender = null;
+        try { sender = RetakesPluginEventSenderCapability.Get(); }
+        catch (KeyNotFoundException) { }
+        if (sender is null)
+        {
+            var eventSender = new RetakesPluginEventSender();
+            Capabilities.RegisterPluginCapability(RetakesPluginEventSenderCapability, () => eventSender);
+        }
 
+        PublishHudProvider(HudQueueCapability,
+            player => _gameManager?.QueueManager.GetHudQueueState(player) ?? default);
+        PublishHudProvider(HudQueueSnapshotCapability,
+            () => _gameManager?.QueueManager.GetHudQueueSnapshot() ?? (0, 0, new Dictionary<int, int>()));
+        PublishHudProvider(HudCommandCapability, CanRunHudCommand);
+        PublishHudProvider(HudEnabledCapability, () => IsPluginEnabled);
 
         // Register event handlers
         RegisterEventHandler<EventPlayerConnectFull>(OnPlayerConnectFull);
@@ -177,11 +198,27 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         Utils.Logger.LogInfo("Main", "Plugin loaded successfully");
     }
 
+    private void PublishHudProvider<T>(PluginCapability<T> capability, T implementation) where T : class
+    {
+        // A process-wide slot lets the original CSS# supplier follow the live plugin instance.
+        var key = "cs2-retakes/" + capability.Name;
+        if (AppContext.GetData(key) is not StrongBox<T?> slot)
+        {
+            slot = new();
+            AppContext.SetData(key, slot);
+            Capabilities.RegisterPluginCapability(capability, () => slot.Value!);
+        }
+
+        slot.Value = implementation;
+        _clearHudProviders.Add(() => slot.Value = null);
+    }
+
     #region Map Initialization
     private void OnMapStart(string mapName)
     {
         Utils.Logger.LogInfo("MapStart", $"Map started: {mapName}");
 
+        GameRulesHelper.Reset();
         SpawnService.Reset();
 
         AddTimer(1.0f, () =>
@@ -190,7 +227,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             {
                 ServerHelper.ExecuteRetakesConfiguration();
             }
-        });
+        }, TimerFlags.STOP_ON_MAPCHANGE);
 
         InitializeServices(mapName);
     }
@@ -529,6 +566,11 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             ServerHelper.ExecuteRetakesUnloadConfiguration();
         }
 
+        GameRulesHelper.Reset();
+        _breakerManager = null;
+        foreach (var clearProvider in _clearHudProviders)
+            clearProvider();
+        _clearHudProviders.Clear();
         base.Unload(hotReload);
     }
 }

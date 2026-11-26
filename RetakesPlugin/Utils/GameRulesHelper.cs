@@ -1,5 +1,6 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Entities;
 using CounterStrikeSharp.API.Modules.Entities.Constants;
 using CounterStrikeSharp.API.Modules.Utils;
 
@@ -7,16 +8,28 @@ namespace RetakesPlugin.Utils;
 
 public static class GameRulesHelper
 {
+    private static uint? _proxyHandle;
+
+    public static void Reset() => _proxyHandle = null;
+
     public static CCSGameRules? GetGameRulesOrNull()
     {
+        if (_proxyHandle is { } handle && EntitySystem.GetEntityByHandle(handle) is { } pointer &&
+            pointer != IntPtr.Zero)
+        {
+            return new CCSGameRulesProxy(pointer).GameRules;
+        }
+
         var gameRulesEntities = Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules");
         var gameRulesProxy = gameRulesEntities.FirstOrDefault();
 
         if (gameRulesProxy == null)
         {
+            Reset();
             return null;
         }
 
+        _proxyHandle = gameRulesProxy.EntityHandle.Raw;
         return gameRulesProxy.GameRules;
     }
 
@@ -51,8 +64,7 @@ public static class GameRulesHelper
 
     public static void CheckRoundDone()
     {
-        var tHumanCount = PlayerHelper.GetPlayerCount(CsTeam.Terrorist);
-        var ctHumanCount = PlayerHelper.GetPlayerCount(CsTeam.CounterTerrorist);
+        var (tHumanCount, ctHumanCount) = PlayerHelper.CountTeams(Utilities.GetPlayers());
 
         if (tHumanCount == 0 || ctHumanCount == 0)
         {

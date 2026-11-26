@@ -12,6 +12,7 @@ public class SpawnManager
 {
     private readonly MapConfigService _mapConfigService;
     private readonly Dictionary<Bombsite, Dictionary<CsTeam, List<Spawn>>> _spawns = new();
+    private readonly Dictionary<Bombsite, List<Spawn>> _planterSpawns = new();
     private readonly Random _random = new();
 
     public Spawn? CurrentPlanterSpawn { get; private set; }
@@ -42,6 +43,9 @@ public class SpawnManager
             _spawns[spawn.Bombsite][spawn.Team].Add(spawn);
         }
 
+        foreach (var (site, teams) in _spawns)
+            _planterSpawns[site] = teams[CsTeam.Terrorist].FindAll(spawn => spawn.CanBePlanter);
+
         Logger.LogInfo("SpawnManager", "Map spawns calculated successfully");
     }
 
@@ -71,8 +75,7 @@ public class SpawnManager
             entry => entry.Value.ToList()
         );
 
-        var ctCount = PlayerHelper.GetPlayerCount(CsTeam.CounterTerrorist);
-        var tCount = PlayerHelper.GetPlayerCount(CsTeam.Terrorist);
+        var (tCount, ctCount) = PlayerHelper.CountTeams(players);
 
         if (ctCount > spawns[CsTeam.CounterTerrorist].Count ||
             tCount > spawns[CsTeam.Terrorist].Count)
@@ -82,7 +85,7 @@ public class SpawnManager
             throw new Exception($"Not enough spawns in map config for Bombsite {bombsite}!");
         }
 
-        var planterSpawns = spawns[CsTeam.Terrorist].Where(spawn => spawn.CanBePlanter).ToList();
+        var planterSpawns = _planterSpawns[bombsite];
 
         if (planterSpawns.Count == 0)
         {
@@ -114,16 +117,21 @@ public class SpawnManager
                 planter = player;
             }
 
-            var count = spawns[team].Count;
-            if (count == 0)
+            var available = spawns[team];
+            if (player != planter && available.Count == 0)
             {
                 continue;
             }
 
-            var spawn = player == planter ? randomPlanterSpawn : spawns[team][_random.Next(count)];
+            var spawn = randomPlanterSpawn;
+            if (player != planter)
+            {
+                var index = _random.Next(available.Count);
+                spawn = available[index];
+                available.RemoveAt(index);
+            }
 
             player.Pawn.Value!.Teleport(spawn.Vector, spawn.QAngle, new Vector());
-            spawns[team].Remove(spawn);
         }
 
         Logger.LogInfo("SpawnManager", $"Players moved to spawns. Planter: {planter?.PlayerName ?? "None"}");

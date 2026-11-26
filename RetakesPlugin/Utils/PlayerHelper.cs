@@ -98,6 +98,22 @@ public static class PlayerHelper
         return true;
     }
 
+    public static (int T, int CT) CountTeams(IEnumerable<CCSPlayerController> players)
+    {
+        int t = 0, ct = 0;
+        foreach (var player in players)
+        {
+            if (!IsValid(player))
+                continue;
+            switch (player.Team)
+            {
+                case CsTeam.Terrorist: t++; break;
+                case CsTeam.CounterTerrorist: ct++; break;
+            }
+        }
+        return (t, ct);
+    }
+
     public static int GetPlayerCount(CsTeam? csTeam = null)
     {
         var players = 0;

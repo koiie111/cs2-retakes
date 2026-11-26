@@ -1,6 +1,7 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
+using CounterStrikeSharp.API.Modules.Timers;
 
 using RetakesPlugin.Utils;
 using RetakesPlugin.Managers;
@@ -29,6 +30,7 @@ public class RoundEventHandlers
     private CCSPlayerController? _planter;
     private CsTeam _lastRoundWinner = CsTeam.None;
     private Bombsite? _forcedBombsite;
+    private int _roundGeneration;
 
     public RoundEventHandlers(RetakesPlugin plugin, GameManager gameManager, SpawnManager spawnManager, BreakerManager? breakerManager, AllocationService allocationService, AnnouncementService announcementService, bool isAutoPlantEnabled, bool enableFallbackAllocation, bool enableFallbackBombsiteAnnouncement, Random random)
     {
@@ -58,6 +60,7 @@ public class RoundEventHandlers
 
     public HookResult OnRoundPreStart(EventRoundPrestart @event, GameEventInfo info)
     {
+        _roundGeneration++;
         var gameRules = GameRulesHelper.GetGameRulesOrNull();
         if (gameRules == null)
         {
@@ -182,7 +185,7 @@ public class RoundEventHandlers
 
         Logger.LogDebug("Round", $"EnableFallbackAllocation: {_enableFallbackAllocation}");
 
-        foreach (var player in _gameManager.QueueManager.ActivePlayers.Where(PlayerHelper.IsValid))
+        foreach (var player in _gameManager.QueueManager.ActivePlayers)
         {
             if (!PlayerHelper.IsValid(player))
             {
@@ -198,14 +201,7 @@ public class RoundEventHandlers
             }
 
             if (_enableFallbackAllocation)
-            {
-                Logger.LogDebug("Round", $"Asignando armas a {player.PlayerName} (fallback allocation habilitado)");
                 _allocationService.AllocatePlayer(player);
-            }
-            else
-            {
-                Logger.LogDebug("Round", $"No asignando armas a {player.PlayerName} (fallback allocation deshabilitado)");
-            }
         }
 
         RetakesPlugin.RetakesPluginEventSenderCapability.Get()?.TriggerEvent(new AllocateEvent());
@@ -245,6 +241,7 @@ public class RoundEventHandlers
 
     public HookResult OnRoundEnd(EventRoundEnd @event, GameEventInfo info)
     {
+        _roundGeneration++;
         _lastRoundWinner = (CsTeam)@event.Winner;
         Logger.LogInfo("Round", $"Round ended. Winner: {_lastRoundWinner}");
         return HookResult.Continue;
@@ -256,10 +253,13 @@ public class RoundEventHandlers
 
         _announcementService.AnnouncePlantLocation(_spawnManager.CurrentPlanterSpawn?.PlantLocation, _currentBombsite);
 
+        var generation = _roundGeneration;
+        var bombsite = _currentBombsite;
         _plugin.AddTimer(4.1f, () =>
         {
-            _announcementService.AnnounceBombsite(_currentBombsite, true);
-        });
+            if (_plugin.IsPluginEnabled && generation == _roundGeneration)
+                _announcementService.AnnounceBombsite(bombsite, true);
+        }, TimerFlags.STOP_ON_MAPCHANGE);
 
         return HookResult.Continue;
     }

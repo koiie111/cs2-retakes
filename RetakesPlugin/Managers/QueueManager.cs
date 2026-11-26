@@ -144,25 +144,8 @@ public class QueueManager
 
     private void RemoveDisconnectedPlayers()
     {
-        var disconnectedActivePlayers = ActivePlayers
-            .Where(player => !PlayerHelper.IsValid(player) || !PlayerHelper.IsConnected(player))
-            .ToList();
-
-        if (disconnectedActivePlayers.Count > 0)
-        {
-            Logger.LogDebug("QueueManager", $"Removing {disconnectedActivePlayers.Count} disconnected active players");
-            ActivePlayers.RemoveWhere(disconnectedActivePlayers.Contains);
-        }
-
-        var disconnectedQueuePlayers = QueuePlayers
-            .Where(player => !PlayerHelper.IsValid(player) || !PlayerHelper.IsConnected(player))
-            .ToList();
-
-        if (disconnectedQueuePlayers.Count > 0)
-        {
-            Logger.LogDebug("QueueManager", $"Removing {disconnectedQueuePlayers.Count} disconnected queue players");
-            QueuePlayers.RemoveWhere(disconnectedQueuePlayers.Contains);
-        }
+        ActivePlayers.RemoveWhere(player => !PlayerHelper.IsValid(player) || !PlayerHelper.IsConnected(player));
+        QueuePlayers.RemoveWhere(player => !PlayerHelper.IsValid(player) || !PlayerHelper.IsConnected(player));
     }
 
     private void HandleQueuePriority()
@@ -262,6 +245,18 @@ public class QueueManager
                 ahead++;
         }
         return (queued ? ahead + 1 : 0, ActivePlayers.Count, waiting);
+    }
+
+    public (int Playing, int Waiting, IReadOnlyDictionary<int, int> Positions) GetHudQueueSnapshot()
+    {
+        var ranked = QueuePlayers.Where(PlayerHelper.IsValid)
+            .Select(player => (player.Slot, Priority: PlayerHelper.GetQueuePriority(player, _queuePriorityFlags)))
+            .OrderByDescending(entry => entry.Priority)
+            .ThenBy(entry => entry.Slot);
+        var positions = new Dictionary<int, int>(QueuePlayers.Count);
+        foreach (var entry in ranked)
+            positions[entry.Slot] = positions.Count + 1;
+        return (ActivePlayers.Count, positions.Count, positions);
     }
 
     public void Update()
@@ -398,6 +393,9 @@ public class QueueManager
 
     public void DebugQueues(bool isBefore)
     {
+        if (!Logger.IsDebugEnabled)
+            return;
+
         var prefix = isBefore ? "BEFORE" : "AFTER";
 
         if (!ActivePlayers.Any())
@@ -421,8 +419,8 @@ public class QueueManager
         }
     }
 
-    private List<CCSPlayerController> _roundTerrorists = [];
-    private List<CCSPlayerController> _roundCounterTerrorists = [];
+    private readonly List<CCSPlayerController> _roundTerrorists = [];
+    private readonly List<CCSPlayerController> _roundCounterTerrorists = [];
 
     public void ClearRoundTeams()
     {
@@ -438,13 +436,22 @@ public class QueueManager
             return;
         }
 
-        _roundTerrorists = ActivePlayers
-            .Where(player => PlayerHelper.IsValid(player) && player.Team == CsTeam.Terrorist)
-            .ToList();
-
-        _roundCounterTerrorists = ActivePlayers
-            .Where(player => PlayerHelper.IsValid(player) && player.Team == CsTeam.CounterTerrorist)
-            .ToList();
+        _roundTerrorists.Clear();
+        _roundCounterTerrorists.Clear();
+        foreach (var player in ActivePlayers)
+        {
+            if (!PlayerHelper.IsValid(player))
+                continue;
+            switch (player.Team)
+            {
+                case CsTeam.Terrorist:
+                    _roundTerrorists.Add(player);
+                    break;
+                case CsTeam.CounterTerrorist:
+                    _roundCounterTerrorists.Add(player);
+                    break;
+            }
+        }
 
         Logger.LogDebug("QueueManager", $"Round teams set: {_roundTerrorists.Count} T, {_roundCounterTerrorists.Count} CT");
     }
