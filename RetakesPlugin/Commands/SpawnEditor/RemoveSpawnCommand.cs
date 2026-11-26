@@ -38,7 +38,7 @@ public class RemoveSpawnCommand
 
         if (_showSpawnsCommand.ShowingSpawnsForBombsite == null)
         {
-            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} You can't remove a spawn if you're not showing the spawns.");
+            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.spawn.remove.show_first"]}");
             return;
         }
 
@@ -49,7 +49,7 @@ public class RemoveSpawnCommand
 
         if (_plugin.SpawnManager == null || _plugin.MapConfigService == null)
         {
-            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} Services not initialized.");
+            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.not_ready"]}");
             return;
         }
 
@@ -57,7 +57,7 @@ public class RemoveSpawnCommand
 
         if (spawns.Count == 0)
         {
-            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} No spawns found.");
+            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.spawn.none"]}");
             return;
         }
 
@@ -79,7 +79,7 @@ public class RemoveSpawnCommand
 
         if (closestSpawn == null)
         {
-            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} No spawns found within 128 units.");
+            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.spawn.none_nearby"]}");
             return;
         }
 
@@ -91,7 +91,7 @@ public class RemoveSpawnCommand
             _plugin.SpawnManager.CalculateMapSpawns();
         }
 
-        commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {(didRemoveSpawn ? "Spawn removed" : "Error removing spawn")}");
+        commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer[didRemoveSpawn ? "retakes.spawn.removed" : "retakes.spawn.remove_failed"]}");
 
         if (didRemoveSpawn)
         {

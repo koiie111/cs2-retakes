@@ -36,7 +36,7 @@ public class MapConfigsCommand
 
         if (!Directory.Exists(mapConfigDirectory))
         {
-            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} No map configs found.");
+            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.map_config.none"]}");
             return;
         }
 
@@ -45,7 +45,7 @@ public class MapConfigsCommand
 
         if (files.Length == 0)
         {
-            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} No map configs found.");
+            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.map_config.none"]}");
             return;
         }
 
@@ -59,6 +59,6 @@ public class MapConfigsCommand
             player?.PrintToConsole($"{_plugin.Localizer["retakes.prefix"]} !mapconfig {transformedFile}");
         }
 
-        commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} A list of available map configs has been outputted above.");
+        commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.map_config.list_end"]}");
     }
 }

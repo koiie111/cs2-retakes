@@ -24,13 +24,13 @@ public class VoicesCommand
     {
         if (!PlayerHelper.IsValid(player))
         {
-            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} You must be a valid player to use this command.");
+            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.command.player_only"]}");
             return;
         }
 
         if (!_config.MapConfig.EnableBombsiteAnnouncementVoices)
         {
-            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} Bombsite voice announcements are permanently disabled on this server.");
+            commandInfo.ReplyToCommand($"{_plugin.Localizer["retakes.prefix"]} {_plugin.Localizer["retakes.voices.unavailable"]}");
             return;
         }
 
