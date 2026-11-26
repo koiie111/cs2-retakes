@@ -2,6 +2,7 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes;
 using CounterStrikeSharp.API.Core.Capabilities;
+using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Cvars;
 using RetakesPluginShared;
@@ -87,6 +88,30 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     public static PluginCapability<IRetakesPluginEventSender> RetakesPluginEventSenderCapability { get; } = new("retakes_plugin:event_sender");
     #endregion
 
+    private static readonly PluginCapability<Func<CCSPlayerController, (int Position, int Playing, int Waiting)>> HudQueueCapability
+        = new("retakes_plugin:hud_queue");
+    private static readonly PluginCapability<Func<CCSPlayerController, string, bool>> HudCommandCapability
+        = new("retakes_plugin:hud_command_allowed");
+    private static readonly PluginCapability<Func<bool>> HudEnabledCapability = new("retakes_plugin:enabled");
+
+    private bool CanRunHudCommand(CCSPlayerController player, string command)
+    {
+        if (!IsPluginEnabled || _gameManager is null || !PlayerHelper.IsValid(player))
+        {
+            return false;
+        }
+
+        var section = command switch
+        {
+            "css_forcebombsite" or "css_forcebombsitestop" or "css_scramble" or "css_debugqueues" => "Admin",
+            "css_mapconfig" or "css_mapconfigs" => "MapConfig",
+            "css_showspawns" or "css_addspawn" or "css_nearestspawn" or "css_removespawn" or "css_hidespawns" => "SpawnEditor",
+            _ => null
+        };
+        return section is not null && AdminManager.PlayerHasPermissions(player,
+            PlayerHelper.GetCommandPermission(Config, command, section));
+    }
+
     #region State
     private readonly HashSet<CCSPlayerController> _hasMutedVoices = [];
     #endregion
@@ -122,6 +147,11 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
 
         var retakesPluginEventSender = new RetakesPluginEventSender();
         Capabilities.RegisterPluginCapability(RetakesPluginEventSenderCapability, () => retakesPluginEventSender);
+        Capabilities.RegisterPluginCapability(HudQueueCapability,
+            () => player => _gameManager?.QueueManager.GetHudQueueState(player) ?? default);
+        Capabilities.RegisterPluginCapability(HudCommandCapability, () => CanRunHudCommand);
+        Capabilities.RegisterPluginCapability(HudEnabledCapability, () => () => IsPluginEnabled);
+
 
         // Register event handlers
         RegisterEventHandler<EventPlayerConnectFull>(OnPlayerConnectFull);

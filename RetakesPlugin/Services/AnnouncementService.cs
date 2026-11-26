@@ -1,5 +1,6 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Core.Capabilities;
 
 using RetakesPlugin.Utils;
 using RetakesPluginShared.Enums;
@@ -8,6 +9,8 @@ namespace RetakesPlugin.Services;
 
 public class AnnouncementService
 {
+    private static readonly PluginCapability<Func<CCSPlayerController, bool>> HudHasRoundToast
+        = new("retakes_allocator:round_toast");
     private readonly RetakesPlugin _plugin;
     private readonly Random _random;
     private readonly HashSet<CCSPlayerController> _hasMutedVoices;
@@ -67,6 +70,7 @@ public class AnnouncementService
         var announcementMessage = _plugin.Localizer["retakes.bombsite.announcement", bombsite.ToString(), numTerrorist, numCounterTerrorist];
         var centerAnnouncementMessage = _plugin.Localizer["retakes.center.bombsite.announcement", bombsite.ToString(), numTerrorist, numCounterTerrorist];
 
+        var hasRoundToast = onlyCenter ? HudHasRoundToast.Get() : null;
         foreach (var player in Utilities.GetPlayers())
         {
             if (!onlyCenter)
@@ -82,7 +86,7 @@ public class AnnouncementService
                 continue;
             }
 
-            if (!_centerEnabled)
+            if (!_centerEnabled || hasRoundToast?.Invoke(player) == true)
             {
                 continue;
             }

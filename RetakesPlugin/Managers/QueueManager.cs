@@ -244,6 +244,26 @@ public class QueueManager
         }
     }
 
+    public (int Position, int Playing, int Waiting) GetHudQueueState(CCSPlayerController player)
+    {
+        var queued = QueuePlayers.Contains(player);
+        var priority = queued ? PlayerHelper.GetQueuePriority(player, _queuePriorityFlags) : 0;
+        var ahead = 0;
+        var waiting = 0;
+        foreach (var candidate in QueuePlayers)
+        {
+            if (!PlayerHelper.IsValid(candidate))
+                continue;
+            waiting++;
+            if (!queued || candidate.Slot == player.Slot)
+                continue;
+            var otherPriority = PlayerHelper.GetQueuePriority(candidate, _queuePriorityFlags);
+            if (otherPriority > priority || otherPriority == priority && candidate.Slot < player.Slot)
+                ahead++;
+        }
+        return (queued ? ahead + 1 : 0, ActivePlayers.Count, waiting);
+    }
+
     public void Update()
     {
         RemoveDisconnectedPlayers();
